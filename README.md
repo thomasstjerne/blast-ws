@@ -41,7 +41,7 @@ The body of your request should be a JSON object:
 
 ```javascript
 {
-  "marker": "its", 
+  "marker": "ITS", 
   "sequence": "TTAGAGGAAGTAAAAGTCGTAACAAGGTTTCCGTAGGTGAACCTGCGGAAGGATCATTATTGAAATAAACCT......."
  }
 ```
