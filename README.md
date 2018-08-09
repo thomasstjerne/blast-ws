@@ -9,7 +9,7 @@ A thin rest service on top af blast.
 
 ### Install
 
-Download a reference dataset: https://unite.ut.ee/repository.php - choose the "General FASTA release
+Download a reference dataset: https://unite.ut.ee/repository.php - choose the "General FASTA release"
 
 Make a blast database: 
 
