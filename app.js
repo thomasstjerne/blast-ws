@@ -122,9 +122,11 @@ function getMatchType(match) {
     if (!match) {
         return 'BLAST_NO_MATCH';
     } else if (Number(match['% identity']) > config.MATCH_THRESHOLD) {
-        return 'BLAST_EXACT';
+        return 'BLAST_EXACT_MATCH';
+    } else if (Number(match['% identity']) > config.MATCH_CLOSE_THRESHOLD) {
+        return 'BLAST_CLOSE_MATCH';
     } else {
-        return 'BLAST_HIGHER_RANK';
+        return 'BLAST_WEAK_MATCH';
     }
 }
 
