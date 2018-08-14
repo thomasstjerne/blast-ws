@@ -39,7 +39,7 @@ app.post('/blast', function(req, res) {
                 res.status(500).send(err);
             } else {
                 let blastJson = blastResultToJson(blastCliOutput);
-                let match = (blastJson.matchType !== 'BLAST_NO_MATCH') ? getMatch(blastJson) : blastJson;
+                let match = (blastJson.matchType !== 'BLAST_NO_MATCH') ? getMatch(blastJson, req.query.verbose) : blastJson;
                 match.sequenceLength = (seq) ? seq.length : 0;
                 res.status(200).json(match);
             }
@@ -142,7 +142,7 @@ function simplyfyMatch(match) {
     };
 }
 
-function getMatch(matches) {
+function getMatch(matches, verbose) {
     try {
         let best = _.maxBy(matches, function(o) {
             return Number(o['% identity']);
@@ -155,7 +155,9 @@ function getMatch(matches) {
         }, []);
 
         let mapped = simplyfyMatch(best);
-        mapped.alternatives = otherMatches;
+        if (verbose) {
+            mapped.alternatives = otherMatches;
+           }
         return mapped;
     } catch (err) {
         console.log(err);

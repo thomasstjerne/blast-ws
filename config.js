@@ -6,7 +6,7 @@ const MATCH_CLOSE_THRESHOLD = 90;
 const SUPPORTED_MARKERS = ['its'];
 const MAX_TARGET_SEQS = 5;
 const NUM_THREADS = 1; // NUM_THREADS * NUM_CONCURRENT_PROCESSES should be equal to the number of cores available for this service
-const NUM_CONCURRENT_PROCESSES = 4;
+const NUM_CONCURRENT_PROCESSES = 8;
 const EXPRESS_PORT = 9000;
 
 module.exports = {
