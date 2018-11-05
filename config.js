@@ -22,7 +22,7 @@ const config = {
     NUM_CONCURRENT_PROCESSES: NUM_CONCURRENT_PROCESSES,
     EXPRESS_PORT: 9000
   },
-  prod: {
+  production: {
     BLAST_SEQ_PATH: 'home/tsjeppesen/seq/',
     BLAST_DATABASE_PATH: '/home/tsjeppesen/',
     DATABASE_NAME: 'sh_general_release_dynamic_01.12.2017',
