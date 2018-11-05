@@ -7,9 +7,10 @@ const SUPPORTED_MARKERS = ['its'];
 const MAX_TARGET_SEQS = 5;
 const NUM_THREADS = 1; // NUM_THREADS * NUM_CONCURRENT_PROCESSES should be equal to the number of cores available for this service
 const NUM_CONCURRENT_PROCESSES = 8;
-const EXPRESS_PORT = 9000;
+const env = process.env.NODE_ENV || 'local';
 
-module.exports = {
+const config = {
+  local: {
     BLAST_SEQ_PATH: BLAST_SEQ_PATH,
     BLAST_DATABASE_PATH: BLAST_DATABASE_PATH,
     DATABASE_NAME: DATABASE_NAME,
@@ -19,5 +20,20 @@ module.exports = {
     MAX_TARGET_SEQS: MAX_TARGET_SEQS,
     NUM_THREADS: NUM_THREADS,
     NUM_CONCURRENT_PROCESSES: NUM_CONCURRENT_PROCESSES,
-    EXPRESS_PORT: EXPRESS_PORT
+    EXPRESS_PORT: 9000
+  },
+  prod: {
+    BLAST_SEQ_PATH: 'home/tsjeppesen/seq/',
+    BLAST_DATABASE_PATH: '/home/tsjeppesen/',
+    DATABASE_NAME: 'sh_general_release_dynamic_01.12.2017',
+    MATCH_THRESHOLD: MATCH_THRESHOLD,
+    MATCH_CLOSE_THRESHOLD: MATCH_CLOSE_THRESHOLD,
+    SUPPORTED_MARKERS: SUPPORTED_MARKERS,
+    MAX_TARGET_SEQS: MAX_TARGET_SEQS,
+    NUM_THREADS: NUM_THREADS,
+    NUM_CONCURRENT_PROCESSES: NUM_CONCURRENT_PROCESSES,
+    EXPRESS_PORT: 80
+  }
 };
+
+module.exports = config[env];
