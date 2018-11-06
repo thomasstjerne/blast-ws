@@ -23,9 +23,9 @@ const config = {
     EXPRESS_PORT: 9000
   },
   production: {
-    BLAST_SEQ_PATH: 'home/tsjeppesen/seq/',
+    BLAST_SEQ_PATH: '/home/tsjeppesen/seq/',
     BLAST_DATABASE_PATH: '/home/tsjeppesen/',
-    DATABASE_NAME: 'sh_general_release_dynamic_01.12.2017',
+    DATABASE_NAME: 'sh_general_release_dynamic_01.12.2017.fasta',
     MATCH_THRESHOLD: MATCH_THRESHOLD,
     MATCH_CLOSE_THRESHOLD: MATCH_CLOSE_THRESHOLD,
     SUPPORTED_MARKERS: SUPPORTED_MARKERS,
