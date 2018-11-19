@@ -10,7 +10,8 @@ const config = require('./config');
 const async = require('async');
 const fs = require('fs');
 
-const blastColumns = ['query id', 'subject id', '% identity', 'alignment length', 'mismatches', 'gap opens', 'q. start', 'q. end', 's. start', 's. end', 'evalue', 'bit score'];
+// const blastColumns = ['query id', 'subject id', '% identity', 'alignment length', 'mismatches', 'gap opens', 'q. start', 'q. end', 's. start', 's. end', 'evalue', 'bit score'];
+const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence'];
 
 
 app.use(addRequestId);
@@ -29,9 +30,18 @@ app.use('/blast', function(req, res, next) {
     }
 });
 
+app.use('/blast', function(req, res, next) {
+    let sequence = req.body.sequence;
+    if (!sequence) {
+        res.status(422).json({'error': 'No sequence given'});
+    } else {
+        next();
+    }
+});
+
 app.post('/blast', function(req, res) {
     let filename = req.id + '.fasta';
-    let seq = req.body.sequence;
+    let seq = req.body.sequence.replace(/[-.]/g, '');
     try {
         blastQueue.push({filename: filename, seq: seq}, function(err, blastCliOutput) {
             if (err) {
@@ -51,7 +61,7 @@ app.post('/blast', function(req, res) {
 
 app.post('/blast/raw', function(req, res) {
     let filename = req.id + '.fasta';
-    let seq = req.body.sequence;
+    let seq = req.body.sequence.replace(/[-.]/g, '');
 
     try {
         blastQueue.push({filename: filename, req_id: req.id, seq: seq}, function(err, blastCliOutput) {
@@ -74,10 +84,12 @@ let blastQueue = async.queue(function(options, callback) {
         if (e) {
             callback(e, null);
         } else {
+          //  blastn -db /Users/thomas/unite -query /Users/thomas/blast/seq/test.fasta -outfmt "6 qseqid sseqid pident length evalue bitscore qseq sseq" -max_target_seqs 2
+
             let pcs = spawn('blastn',
                 ['-query', config.BLAST_SEQ_PATH + options.filename,
                     '-db', config.BLAST_DATABASE_PATH + config.DATABASE_NAME,
-                    '-outfmt', 6,
+                    '-outfmt', '6 sseqid pident length evalue bitscore qseq sseq', // 6,
                     '-max_target_seqs', config.MAX_TARGET_SEQS,
                     '-num_threads', config.NUM_THREADS],
                 {stdio: [0, 'pipe', 0]});
@@ -130,7 +142,7 @@ function getMatchType(match) {
     }
 }
 
-function simplyfyMatch(match) {
+function simplyfyMatch(match, bestIdentity) {
     let splitted = match['subject id'].split('|');
     return {
         'name': splitted[2],
@@ -138,7 +150,10 @@ function simplyfyMatch(match) {
         'appliedScientificName': splitted[0],
         'matchType': getMatchType(match),
         'bitScore': Number(match['bit score']),
-        'expectValue': Number(match['evalue'])
+        'expectValue': Number(match['evalue']),
+        'querySequence': match['query sequence'],
+        'subjectSequence': match['subject sequence'],
+        'distanceToBestMatch': bestIdentity - Number(match['% identity'])
     };
 }
 
@@ -149,7 +164,7 @@ function getMatch(matches, verbose) {
         });
         let otherMatches = _.reduce(matches, function(alternatives, match) {
             if (match !== best && match['subject id']) {
-                alternatives.push(simplyfyMatch(match));
+                alternatives.push(simplyfyMatch(match, best['% identity']));
             }
             return alternatives;
         }, []);
@@ -157,10 +172,15 @@ function getMatch(matches, verbose) {
         let mapped = simplyfyMatch(best);
         if (verbose) {
             mapped.alternatives = otherMatches;
+           } else {
+            const alternatives = otherMatches.filter((a) => a.distanceToBestMatch < (100 - config.MATCH_THRESHOLD));
+            if (alternatives.length > 0) {
+                mapped.alternatives = alternatives;
+            }
            }
         return mapped;
     } catch (err) {
-        console.log(err);
+      //  console.log(err);
         // in this case matches is matchType NONE
         return matches;
     }
@@ -177,6 +197,8 @@ function blastResultToJson(blastResult) {
             }
             return res;
         });
+       // console.log(json);
+
         return json;
     } else {
         return {matchType: 'BLAST_NO_MATCH'};
