@@ -11,7 +11,7 @@ const async = require('async');
 const fs = require('fs');
 
 // const blastColumns = ['query id', 'subject id', '% identity', 'alignment length', 'mismatches', 'gap opens', 'q. start', 'q. end', 's. start', 's. end', 'evalue', 'bit score'];
-const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence'];
+const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send'];
 
 
 app.use(addRequestId);
@@ -85,11 +85,10 @@ let blastQueue = async.queue(function(options, callback) {
             callback(e, null);
         } else {
           //  blastn -db /Users/thomas/unite -query /Users/thomas/blast/seq/test.fasta -outfmt "6 qseqid sseqid pident length evalue bitscore qseq sseq" -max_target_seqs 2
-
             let pcs = spawn('blastn',
                 ['-query', config.BLAST_SEQ_PATH + options.filename,
                     '-db', config.BLAST_DATABASE_PATH + config.DATABASE_NAME,
-                    '-outfmt', '6 sseqid pident length evalue bitscore qseq sseq', // 6,
+                    '-outfmt', '6 sseqid pident length evalue bitscore qseq sseq qstart qend sstart send', // 6,
                     '-max_target_seqs', config.MAX_TARGET_SEQS,
                     '-num_threads', config.NUM_THREADS],
                 {stdio: [0, 'pipe', 0]});
@@ -153,6 +152,10 @@ function simplyfyMatch(match, bestIdentity) {
         'expectValue': Number(match['evalue']),
         'querySequence': match['query sequence'],
         'subjectSequence': match['subject sequence'],
+        'qstart': match['qstart'],
+        'qend': match['qend'],
+        'sstart': match['sstart'],
+        'send': match['send'],
         'distanceToBestMatch': bestIdentity - Number(match['% identity'])
     };
 }
@@ -176,6 +179,10 @@ function getMatch(matches, verbose) {
             const alternatives = otherMatches.filter((a) => a.distanceToBestMatch < (100 - config.MATCH_THRESHOLD));
             if (alternatives.length > 0) {
                 mapped.alternatives = alternatives;
+                if (mapped.matchType === 'BLAST_EXACT_MATCH') {
+                    // ambiguous
+                    mapped.matchType = 'BLAST_AMBIGUOUS_MATCH';
+                }
             }
            }
         return mapped;
