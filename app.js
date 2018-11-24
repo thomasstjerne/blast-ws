@@ -41,7 +41,7 @@ app.use('/blast', function(req, res, next) {
 
 app.post('/blast', function(req, res) {
     let filename = req.id + '.fasta';
-    let seq = req.body.sequence.replace(/[-.]/g, '');
+    let seq = sanitizeSequence(req.body.sequence);
     try {
         blastQueue.push({filename: filename, seq: seq}, function(err, blastCliOutput) {
             if (err) {
@@ -61,7 +61,7 @@ app.post('/blast', function(req, res) {
 
 app.post('/blast/raw', function(req, res) {
     let filename = req.id + '.fasta';
-    let seq = req.body.sequence.replace(/[-.]/g, '');
+    let seq = sanitizeSequence(req.body.sequence);
 
     try {
         blastQueue.push({filename: filename, req_id: req.id, seq: seq}, function(err, blastCliOutput) {
@@ -128,6 +128,8 @@ let blastQueue = async.queue(function(options, callback) {
 http.listen(config.EXPRESS_PORT, function() {
     console.log('Express server listening on port ' + config.EXPRESS_PORT);
 });
+
+const sanitizeSequence = (sequence) => sequence.replace(/[^ACGTURYSWKMBDHVNacgturyswkmbdhvn]/g, '');
 
 function getMatchType(match) {
     if (!match) {
