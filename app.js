@@ -42,14 +42,20 @@ app.use('/blast', function(req, res, next) {
 app.post('/blast', function(req, res) {
     let filename = req.id + '.fasta';
     let seq = sanitizeSequence(req.body.sequence);
+    let marker;
+     if (req.body.marker.substring(0, 3).toLowerCase() === 'coi' || req.body.marker.substring(0, 3).toLowerCase() === 'co1') {
+         marker = 'COI';
+     } else if (req.body.marker.substring(0, 3).toLowerCase() === 'its') {
+         marker = 'ITS';
+     }
     try {
-        blastQueue.push({filename: filename, seq: seq}, function(err, blastCliOutput) {
+        blastQueue.push({filename: filename, seq: seq, marker: marker}, function(err, blastCliOutput) {
             if (err) {
                 console.log(err);
                 res.status(500).send(err);
             } else {
                 let blastJson = blastResultToJson(blastCliOutput);
-                let match = (blastJson.matchType !== 'BLAST_NO_MATCH') ? getMatch(blastJson, req.query.verbose) : blastJson;
+                let match = (blastJson.matchType !== 'BLAST_NO_MATCH') ? getMatch(blastJson, marker, req.query.verbose) : blastJson;
                 match.sequenceLength = (seq) ? seq.length : 0;
                 res.status(200).json(match);
             }
@@ -62,9 +68,14 @@ app.post('/blast', function(req, res) {
 app.post('/blast/raw', function(req, res) {
     let filename = req.id + '.fasta';
     let seq = sanitizeSequence(req.body.sequence);
-
+    let marker;
+    if (req.body.marker.substring(0, 3).toLowerCase() === 'coi' || req.body.marker.substring(0, 3).toLowerCase() === 'co1') {
+        marker = 'COI';
+    } else if (req.body.marker.substring(0, 3).toLowerCase() === 'its') {
+        marker = 'ITS';
+    }
     try {
-        blastQueue.push({filename: filename, req_id: req.id, seq: seq}, function(err, blastCliOutput) {
+        blastQueue.push({filename: filename, req_id: req.id, seq: seq, marker: marker}, function(err, blastCliOutput) {
             if (err) {
                 console.log(err);
                 res.status(500).send(err);
@@ -87,7 +98,7 @@ let blastQueue = async.queue(function(options, callback) {
           //  blastn -db /Users/thomas/unite -query /Users/thomas/blast/seq/test.fasta -outfmt "6 qseqid sseqid pident length evalue bitscore qseq sseq" -max_target_seqs 2
             let pcs = spawn('blastn',
                 ['-query', config.BLAST_SEQ_PATH + options.filename,
-                    '-db', config.BLAST_DATABASE_PATH + config.DATABASE_NAME,
+                    '-db', config.BLAST_DATABASE_PATH + config.DATABASE_NAME[options.marker],
                     '-outfmt', '6 sseqid pident length evalue bitscore qseq sseq qstart qend sstart send', // 6,
                     '-max_target_seqs', config.MAX_TARGET_SEQS,
                     '-num_threads', config.NUM_THREADS],
@@ -131,25 +142,25 @@ http.listen(config.EXPRESS_PORT, function() {
 
 const sanitizeSequence = (sequence) => sequence.replace(/[^ACGTURYSWKMBDHVNacgturyswkmbdhvn]/g, '');
 
-function getMatchType(match) {
+function getMatchType(match, marker) {
     if (!match) {
         return 'BLAST_NO_MATCH';
-    } else if (Number(match['% identity']) > config.MATCH_THRESHOLD) {
+    } else if (Number(match['% identity']) > config.MATCH_THRESHOLD[marker]) {
         return 'BLAST_EXACT_MATCH';
-    } else if (Number(match['% identity']) > config.MATCH_CLOSE_THRESHOLD) {
+    } else if (Number(match['% identity']) > config.MATCH_CLOSE_THRESHOLD[marker]) {
         return 'BLAST_CLOSE_MATCH';
     } else {
         return 'BLAST_WEAK_MATCH';
     }
 }
 
-function simplyfyMatch(match, bestIdentity) {
+function simplyfyMatch(match, bestIdentity, marker) {
     let splitted = match['subject id'].split('|');
     return {
         'name': splitted[2],
         'identity': Number(match['% identity']),
         'appliedScientificName': splitted[0],
-        'matchType': getMatchType(match),
+        'matchType': getMatchType(match, marker),
         'bitScore': Number(match['bit score']),
         'expectValue': Number(match['evalue']),
         'querySequence': match['query sequence'],
@@ -162,19 +173,19 @@ function simplyfyMatch(match, bestIdentity) {
     };
 }
 
-function getMatch(matches, verbose) {
+function getMatch(matches, marker, verbose) {
     try {
         let best = _.maxBy(matches, function(o) {
             return Number(o['% identity']);
         });
         let otherMatches = _.reduce(matches, function(alternatives, match) {
             if (match !== best && match['subject id']) {
-                alternatives.push(simplyfyMatch(match, best['% identity']));
+                alternatives.push(simplyfyMatch(match, best['% identity'], marker));
             }
             return alternatives;
         }, []);
 
-        let mapped = simplyfyMatch(best);
+        let mapped = simplyfyMatch(best, best['% identity'], marker);
         if (verbose) {
             mapped.alternatives = otherMatches;
            } else {
