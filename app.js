@@ -11,7 +11,7 @@ const async = require('async');
 const fs = require('fs');
 
 // const blastColumns = ['query id', 'subject id', '% identity', 'alignment length', 'mismatches', 'gap opens', 'q. start', 'q. end', 's. start', 's. end', 'evalue', 'bit score'];
-const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send'];
+const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send', '% query cover'];
 
 
 app.use(addRequestId);
@@ -99,7 +99,7 @@ let blastQueue = async.queue(function(options, callback) {
             let pcs = spawn('blastn',
                 ['-query', config.BLAST_SEQ_PATH + options.filename,
                     '-db', config.BLAST_DATABASE_PATH + config.DATABASE_NAME[options.marker],
-                    '-outfmt', '6 sseqid pident length evalue bitscore qseq sseq qstart qend sstart send', // 6,
+                    '-outfmt', '6 sseqid pident length evalue bitscore qseq sseq qstart qend sstart send qcovs', // 6,
                     '-max_target_seqs', config.MAX_TARGET_SEQS,
                     '-num_threads', config.NUM_THREADS],
                 {stdio: [0, 'pipe', 0]});
@@ -145,9 +145,9 @@ const sanitizeSequence = (sequence) => sequence.replace(/[^ACGTURYSWKMBDHVNacgtu
 function getMatchType(match, marker) {
     if (!match) {
         return 'BLAST_NO_MATCH';
-    } else if (Number(match['% identity']) > config.MATCH_THRESHOLD[marker]) {
+    } else if (Number(match['% identity']) > config.MATCH_THRESHOLD[marker] && Number(match['% query cover']) >= config.MINIMUM_QUERY_COVER) {
         return 'BLAST_EXACT_MATCH';
-    } else if (Number(match['% identity']) > config.MATCH_CLOSE_THRESHOLD[marker]) {
+    } else if (Number(match['% identity']) > config.MATCH_CLOSE_THRESHOLD[marker] && Number(match['% query cover']) >= config.MINIMUM_QUERY_COVER) {
         return 'BLAST_CLOSE_MATCH';
     } else {
         return 'BLAST_WEAK_MATCH';
@@ -169,6 +169,7 @@ function simplyfyMatch(match, bestIdentity, marker) {
         'qend': match['qend'],
         'sstart': match['sstart'],
         'send': match['send'],
+        'qcovs': Number(match['% query cover']),
         'distanceToBestMatch': bestIdentity - Number(match['% identity'])
     };
 }
@@ -176,7 +177,7 @@ function simplyfyMatch(match, bestIdentity, marker) {
 function getMatch(matches, marker, verbose) {
     try {
         let best = _.maxBy(matches, function(o) {
-            return Number(o['% identity']);
+           return Number(o['bit score']);
         });
         let otherMatches = _.reduce(matches, function(alternatives, match) {
             if (match !== best && match['subject id']) {
@@ -189,7 +190,7 @@ function getMatch(matches, marker, verbose) {
         if (verbose) {
             mapped.alternatives = otherMatches;
            } else {
-            const alternatives = otherMatches.filter((a) => a.distanceToBestMatch < (100 - config.MATCH_THRESHOLD));
+            const alternatives = otherMatches.filter((a) => a.matchType === 'BLAST_EXACT_MATCH' && a.distanceToBestMatch < (100 - config.MATCH_THRESHOLD));
             if (alternatives.length > 0) {
                 mapped.alternatives = alternatives;
                 if (mapped.matchType === 'BLAST_EXACT_MATCH') {
@@ -200,7 +201,7 @@ function getMatch(matches, marker, verbose) {
            }
         return mapped;
     } catch (err) {
-      //  console.log(err);
+        console.log(err);
         // in this case matches is matchType NONE
         return matches;
     }
