@@ -101,7 +101,10 @@ let blastQueue = async.queue(function(options, callback) {
                     '-db', config.BLAST_DATABASE_PATH + config.DATABASE_NAME[options.marker],
                     '-outfmt', '6 sseqid pident length evalue bitscore qseq sseq qstart qend sstart send qcovs', // 6,
                     '-max_target_seqs', config.MAX_TARGET_SEQS,
-                    '-num_threads', config.NUM_THREADS],
+                    '-num_threads', config.NUM_THREADS,
+                    '-qcov_hsp_perc', config.MINIMUM_QUERY_COVER,
+                    '-max_hsps', 1
+                ],
                 {stdio: [0, 'pipe', 0]});
             let string = '';
 
@@ -145,9 +148,9 @@ const sanitizeSequence = (sequence) => sequence.replace(/[^ACGTURYSWKMBDHVNacgtu
 function getMatchType(match, marker) {
     if (!match) {
         return 'BLAST_NO_MATCH';
-    } else if (Number(match['% identity']) > config.MATCH_THRESHOLD[marker] && Number(match['% query cover']) >= config.MINIMUM_QUERY_COVER) {
+    } else if (Number(match['% identity']) > config.MATCH_THRESHOLD[marker] /* && Number(match['% query cover']) >= config.MINIMUM_QUERY_COVER */) {
         return 'BLAST_EXACT_MATCH';
-    } else if (Number(match['% identity']) > config.MATCH_CLOSE_THRESHOLD[marker] && Number(match['% query cover']) >= config.MINIMUM_QUERY_COVER) {
+    } else if (Number(match['% identity']) > config.MATCH_CLOSE_THRESHOLD[marker] /* && Number(match['% query cover']) >= config.MINIMUM_QUERY_COVER */) {
         return 'BLAST_CLOSE_MATCH';
     } else {
         return 'BLAST_WEAK_MATCH';
