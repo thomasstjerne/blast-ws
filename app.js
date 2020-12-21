@@ -47,7 +47,9 @@ app.post('/blast', function(req, res) {
          marker = 'COI';
      } else if (req.body.marker.substring(0, 3).toLowerCase() === 'its') {
          marker = 'ITS';
-     }
+     } else if (req.body.marker.substring(0, 3).toLowerCase() === '16s') {
+        marker = '16S';
+    }
     try {
         blastQueue.push({filename: filename, seq: seq, marker: marker}, function(err, blastCliOutput) {
             if (err) {
@@ -73,6 +75,8 @@ app.post('/blast/raw', function(req, res) {
         marker = 'COI';
     } else if (req.body.marker.substring(0, 3).toLowerCase() === 'its') {
         marker = 'ITS';
+    } else if (req.body.marker.substring(0, 3).toLowerCase() === '16s') {
+        marker = '16S';
     }
     try {
         blastQueue.push({filename: filename, req_id: req.id, seq: seq, marker: marker}, function(err, blastCliOutput) {
@@ -160,7 +164,7 @@ function getMatchType(match, marker) {
 function simplyfyMatch(match, bestIdentity, marker) {
     let splitted = match['subject id'].split('|');
     return {
-        'name': splitted[2],
+        'name': splitted[2].replace(/_/g, ' '), // white space is not allowed in fasta headers and usually replaced with _
         'identity': Number(match['% identity']),
         'appliedScientificName': splitted[0],
         'matchType': getMatchType(match, marker),
