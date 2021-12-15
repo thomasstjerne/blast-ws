@@ -85,7 +85,7 @@ let blastQueue = async.queue(function(options, callback) {
           let params =  ['-query', config.BLAST_SEQ_PATH + options.filename,
           '-db', config.BLAST_DATABASE_PATH + config.DATABASE_NAME[options.marker],
           '-outfmt', '6 sseqid pident length evalue bitscore qseq sseq qstart qend sstart send qcovs', // 6,
-          '-max_target_seqs', options.max_target_seqs || config.MAX_TARGET_SEQS,
+          '-max_target_seqs', !isNaN(parseInt(options.max_target_seqs)) && parseInt(options.max_target_seqs) <= config.LIMIT_MAX_TARGET_SEQS ? options.max_target_seqs : config.MAX_TARGET_SEQS,
           '-num_threads', config.NUM_THREADS,
           '-qcov_hsp_perc', config.MINIMUM_QUERY_COVER,
           '-max_hsps', 1
