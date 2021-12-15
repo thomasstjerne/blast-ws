@@ -40,25 +40,16 @@ app.use('/blast', function(req, res, next) {
 });
 
 app.post('/blast', function(req, res) {
-    let filename = req.id + '.fasta';
-    let seq = sanitizeSequence(req.body.sequence);
-    let marker;
-     if (req.body.marker.substring(0, 3).toLowerCase() === 'coi' || req.body.marker.substring(0, 3).toLowerCase() === 'co1') {
-         marker = 'COI';
-     } else if (req.body.marker.substring(0, 3).toLowerCase() === 'its') {
-         marker = 'ITS';
-     } else if (req.body.marker.substring(0, 3).toLowerCase() === '16s') {
-        marker = '16S';
-    }
+    const options = blastOptionsFromRequest(req)
     try {
-        blastQueue.push({filename: filename, seq: seq, marker: marker}, function(err, blastCliOutput) {
+        blastQueue.push(options, function(err, blastCliOutput) {
             if (err) {
                 console.log(err);
                 res.status(500).send(err);
             } else {
                 let blastJson = blastResultToJson(blastCliOutput);
-                let match = (blastJson.matchType !== 'BLAST_NO_MATCH') ? getMatch(blastJson, marker, req.query.verbose) : blastJson;
-                match.sequenceLength = (seq) ? seq.length : 0;
+                let match = (blastJson.matchType !== 'BLAST_NO_MATCH') ? getMatch(blastJson, options.marker, req.query.verbose) : blastJson;
+                match.sequenceLength = (options.seq) ? options.seq.length : 0;
                 res.status(200).json(match);
             }
         });
@@ -68,24 +59,15 @@ app.post('/blast', function(req, res) {
 });
 
 app.post('/blast/raw', function(req, res) {
-    let filename = req.id + '.fasta';
-    let seq = sanitizeSequence(req.body.sequence);
-    let marker;
-    if (req.body.marker.substring(0, 3).toLowerCase() === 'coi' || req.body.marker.substring(0, 3).toLowerCase() === 'co1') {
-        marker = 'COI';
-    } else if (req.body.marker.substring(0, 3).toLowerCase() === 'its') {
-        marker = 'ITS';
-    } else if (req.body.marker.substring(0, 3).toLowerCase() === '16s') {
-        marker = '16S';
-    }
+    const options = blastOptionsFromRequest(req)
     try {
-        blastQueue.push({filename: filename, req_id: req.id, seq: seq, marker: marker}, function(err, blastCliOutput) {
+        blastQueue.push(options, function(err, blastCliOutput) {
             if (err) {
                 console.log(err);
                 res.status(500).send(err);
             } else {
                 let match = blastResultToJson(blastCliOutput);
-                match.sequenceLength = seq.length;
+                match.sequenceLength = options.seq ? options.seq.length : 0;
                 res.status(200).json(match);
             }
         });
@@ -100,15 +82,19 @@ let blastQueue = async.queue(function(options, callback) {
             callback(e, null);
         } else {
           //  blastn -db /Users/thomas/unite -query /Users/thomas/blast/seq/test.fasta -outfmt "6 qseqid sseqid pident length evalue bitscore qseq sseq" -max_target_seqs 2
-            let pcs = spawn('blastn',
-                ['-query', config.BLAST_SEQ_PATH + options.filename,
-                    '-db', config.BLAST_DATABASE_PATH + config.DATABASE_NAME[options.marker],
-                    '-outfmt', '6 sseqid pident length evalue bitscore qseq sseq qstart qend sstart send qcovs', // 6,
-                    '-max_target_seqs', config.MAX_TARGET_SEQS,
-                    '-num_threads', config.NUM_THREADS,
-                    '-qcov_hsp_perc', config.MINIMUM_QUERY_COVER,
-                    '-max_hsps', 1
-                ],
+          let params =  ['-query', config.BLAST_SEQ_PATH + options.filename,
+          '-db', config.BLAST_DATABASE_PATH + config.DATABASE_NAME[options.marker],
+          '-outfmt', '6 sseqid pident length evalue bitscore qseq sseq qstart qend sstart send qcovs', // 6,
+          '-max_target_seqs', options.max_target_seqs || config.MAX_TARGET_SEQS,
+          '-num_threads', config.NUM_THREADS,
+          '-qcov_hsp_perc', config.MINIMUM_QUERY_COVER,
+          '-max_hsps', 1
+      ];
+      if(options.perc_identity){
+          params = [...params, '-perc_identity', options.perc_identity]
+      }
+          let pcs = spawn('blastn',
+                params,
                 {stdio: [0, 'pipe', 0]});
             let string = '';
 
@@ -231,5 +217,28 @@ function blastResultToJson(blastResult) {
     } else {
         return {matchType: 'BLAST_NO_MATCH'};
     }
+}
+
+function blastOptionsFromRequest(req) {
+    let filename = req.id + '.fasta';
+    let seq = sanitizeSequence(req.body.sequence);
+    let marker;
+     if (req.body.marker.substring(0, 3).toLowerCase() === 'coi' || req.body.marker.substring(0, 3).toLowerCase() === 'co1') {
+         marker = 'COI';
+     } else if (req.body.marker.substring(0, 3).toLowerCase() === 'its') {
+         marker = 'ITS';
+     } else if (req.body.marker.substring(0, 3).toLowerCase() === '16s') {
+        marker = '16S';
+    }
+    let options = {filename: filename, seq: seq, marker: marker};
+    const perc_identity = _.get(req, 'body.perc_identity'); 
+    const max_target_seqs = _.get(req, 'body.max_target_seqs'); 
+    if(perc_identity&& !isNaN(parseInt(perc_identity))){
+        options.perc_identity = perc_identity
+    }
+    if(max_target_seqs && !isNaN(parseInt(max_target_seqs))){
+        options.max_target_seqs = max_target_seqs
+    }
+    return options;
 }
 
