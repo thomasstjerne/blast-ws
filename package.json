@@ -2,7 +2,7 @@
   "name": "blast-ws",
   "version": "0.0.1",
   "dependencies": {
-    "async": "^2.6.0",
+    "async": "^3.2.2",
     "body-parser": "^1.18.2",
     "express": "^4.16.3",
     "express-request-id": "^1.4.0",
