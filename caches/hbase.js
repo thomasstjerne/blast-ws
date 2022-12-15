@@ -3,7 +3,7 @@ const _ = require('lodash');
 const config = require('../config').HBASE;
 const thrift = require('thrift'),
   HBase = require('./gen-nodejs/HBase.js'),
-  HBaseTypes = require('./gen-nodejs/HBase_types.js'),
+  HBaseTypes = require('./gen-nodejs/Hbase_types.js'),
   connection = thrift.createConnection(config.hosts[0], config.port, {
     transport: thrift.TBufferedTransport,
     protocol: thrift.TBinaryProtocol
