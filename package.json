@@ -7,7 +7,7 @@
     "express": "^4.18.1",
     "express-request-id": "^1.4.0",
     "linereader": "^1.1.0",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.21",
     "request": "^2.88.0",
     "request-promise": "^4.2.6",
     "thrift": "^0.17.0"
