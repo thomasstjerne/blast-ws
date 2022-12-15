@@ -9,7 +9,7 @@ const spawn = require('child_process').spawn;
 const config = require('./config');
 const async = require('async');
 const fs = require('fs');
-
+const cache = require('./caches/hbase'); // Could be null if no cache is needed
 // const blastColumns = ['query id', 'subject id', '% identity', 'alignment length', 'mismatches', 'gap opens', 'q. start', 'q. end', 's. start', 's. end', 'evalue', 'bit score'];
 const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send', '% query cover'];
 
@@ -20,24 +20,30 @@ app.use(bodyParser.json({
 }));
 
 app.use('/blast', function(req, res, next) {
-    let marker = req.body.marker;
+    let marker = req?.body?.marker || req?.query?.marker;
+    let sequence = req?.body?.sequence ||  req?.query?.sequence;
     if (!marker) {
-        res.status(422).json({'error': 'No marker given'});
+        res.status(422).send({'error': 'No marker given'});
     } else if (config.SUPPORTED_MARKERS.indexOf(marker.substring(0, 3).toLowerCase()) === -1) {
-        res.status(422).json({'error': 'Unsupported marker'});
+        res.status(422).send({'error': 'Unsupported marker'});
+    } else if (!sequence) {
+        res.status(422).send({'error': 'No sequence given'});
+    } else if(cache){
+        const options = blastOptionsFromRequest(req);
+        cache.get(options.seq, config.DATABASE_NAME[options.marker] )
+                        .then(
+                            (result)=> {
+                               // console.log("fetched from cache")
+                                res.status(200).send(result);
+                            })
+                        .catch(() => {
+                            next() 
+                        }) 
     } else {
         next();
     }
 });
 
-app.use('/blast', function(req, res, next) {
-    let sequence = req.body.sequence;
-    if (!sequence) {
-        res.status(422).json({'error': 'No sequence given'});
-    } else {
-        next();
-    }
-});
 
 app.post('/blast', function(req, res) {
     const options = blastOptionsFromRequest(req)
@@ -50,7 +56,19 @@ app.post('/blast', function(req, res) {
                 let blastJson = blastResultToJson(blastCliOutput);
                 let match = (blastJson.matchType !== 'BLAST_NO_MATCH') ? getMatch(blastJson, options.marker, req.query.verbose) : blastJson;
                 match.sequenceLength = (options.seq) ? options.seq.length : 0;
-                res.status(200).json(match);
+                 // Only cache default results with max target seqs === config.MAX_TARGET_SEQS
+                if(!cache || (options.max_target_seqs && options.max_target_seqs !== config.MAX_TARGET_SEQS)){
+                    res.status(200).json(match);
+                } else {
+                        cache.set(options.seq, config.DATABASE_NAME[options.marker] , match)
+                        .then(()=> {res.status(200).json(match);})
+                        .catch((err) => {
+                            console.log("Caching err :")
+                            console.log(err)
+                            res.status(200).json(match);
+                        })       
+                }
+                
             }
         });
     } catch (err) {
@@ -220,14 +238,15 @@ function blastResultToJson(blastResult) {
 }
 
 function blastOptionsFromRequest(req) {
+    let dataLocation = (req.body.sequence && req.body.marker) ? 'body' : 'query';
     let filename = req.id + '.fasta';
-    let seq = sanitizeSequence(req.body.sequence);
+    let seq = sanitizeSequence(req[dataLocation].sequence);
     let marker;
-     if (req.body.marker.substring(0, 3).toLowerCase() === 'coi' || req.body.marker.substring(0, 3).toLowerCase() === 'co1') {
+     if (req[dataLocation].marker.substring(0, 3).toLowerCase() === 'coi' || req[dataLocation].marker.substring(0, 3).toLowerCase() === 'co1') {
          marker = 'COI';
-     } else if (req.body.marker.substring(0, 3).toLowerCase() === 'its') {
+     } else if (req[dataLocation].marker.substring(0, 3).toLowerCase() === 'its') {
          marker = 'ITS';
-     } else if (req.body.marker.substring(0, 3).toLowerCase() === '16s') {
+     } else if (req[dataLocation].marker.substring(0, 3).toLowerCase() === '16s') {
         marker = '16S';
     }
     let options = {filename: filename, seq: seq, marker: marker};
@@ -242,3 +261,21 @@ function blastOptionsFromRequest(req) {
     return options;
 }
 
+function getFromCache(req, res) {
+    const options = blastOptionsFromRequest(req)
+        if(cache){
+            cache.get(options.seq, config.DATABASE_NAME[options.marker] )
+                        .then(
+                            (result)=> {
+                                res.status(200).send(result);
+                            })
+                        .catch((err) => {
+                            res.sendStatus(404)
+                        })    
+        } else {
+            res.sendStatus(404)
+        }
+}
+
+app.post('/blast/cache', getFromCache);
+app.get('/blast/cache', getFromCache);

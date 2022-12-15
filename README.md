@@ -56,3 +56,17 @@ curl --header "Content-Type: application/json" \
 }' \
   http://localhost:9000/blast | node <<< "var o = $(cat); console.log(JSON.stringify(o, null, 4));"
 ```
+
+### HBase cache
+
+```
+create 'blast_cache', {NAME=>'ref', VERSIONS => 1, COMPRESSION => 'SNAPPY', DATA_BLOCK_ENCODING => 'FAST_DIFF', BLOOMFILTER => 'NONE'}
+
+hosts: c4master1-vh.gbif.org, c4master2-vh.gbif.org, c4master2-vh.gbif.org
+port: 9090
+
+ssh tsjeppesen@c4gateway-vh.gbif.org
+> hbase shell
+hbase> count 'blast_cache'
+hbase> scan 'blast_cache'
+```

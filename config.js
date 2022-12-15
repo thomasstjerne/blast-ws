@@ -16,6 +16,13 @@ const NUM_CONCURRENT_PROCESSES = 8;
 const env = process.env.NODE_ENV || 'local';
 console.log('ENV: ' + env);
 
+
+const HBASE = {
+  hosts: ["c4master1-vh.gbif.org", "c4master2-vh.gbif.org", "c4master2-vh.gbif.org"],
+  port: 9090,
+  tableName: 'blast_cache'
+}; 
+
 const config = {
   local: {
     BLAST_SEQ_PATH: BLAST_SEQ_PATH,
@@ -29,7 +36,8 @@ const config = {
     MINIMUM_QUERY_COVER: MINIMUM_QUERY_COVER,
     NUM_THREADS: NUM_THREADS,
     NUM_CONCURRENT_PROCESSES: NUM_CONCURRENT_PROCESSES,
-    EXPRESS_PORT: 9000
+    EXPRESS_PORT: 9000,
+    HBASE: HBASE
   },
   production: {
     BLAST_SEQ_PATH: '/home/tsjeppesen/seq/',
@@ -43,7 +51,8 @@ const config = {
     MINIMUM_QUERY_COVER: MINIMUM_QUERY_COVER,
     NUM_THREADS: NUM_THREADS,
     NUM_CONCURRENT_PROCESSES: NUM_CONCURRENT_PROCESSES,
-    EXPRESS_PORT: 80
+    EXPRESS_PORT: 80,
+    HBASE: HBASE
   }
 };
 
