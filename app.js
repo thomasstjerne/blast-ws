@@ -20,8 +20,8 @@ app.use(bodyParser.json({
 }));
 
 app.use('/blast', function(req, res, next) {
-    let marker = req?.body?.marker || req?.query?.marker;
-    let sequence = req?.body?.sequence ||  req?.query?.sequence;
+    let marker = _.get(req, 'body.marker') ||  _.get(req, 'query.marker');
+    let sequence = _.get(req, 'body.sequence') ||  _.get(req, 'query.sequence');
     if (!marker) {
         res.status(422).send({'error': 'No marker given'});
     } else if (config.SUPPORTED_MARKERS.indexOf(marker.substring(0, 3).toLowerCase()) === -1) {
