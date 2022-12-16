@@ -3,72 +3,88 @@ const _ = require('lodash');
 const config = require('../config').HBASE;
 const thrift = require('thrift'),
   HBase = require('./gen-nodejs/HBase.js'),
-  HBaseTypes = require('./gen-nodejs/Hbase_types.js'),
-  connection = thrift.createConnection(config.hosts[0], config.port, {
-    transport: thrift.TBufferedTransport,
-    protocol: thrift.TBinaryProtocol
-  });
-const client = thrift.createClient(HBase,connection);
-
-  connection.on('connect', function() {
-    client.getTableNames(function(err,data) {
-      if (err) {
-        console.log('get table names error:', err);
-      } else {
-       // console.log('hbase tables:', data.map(t => t.toString()));
-        const table = data.find(t => t.toString() === config.tableName);
-        if(table){
-            console.log(`Hbase table ${config.tableName} found. Cache is ready.`)
-        } else {
-            console.log(`Hbase table ${config.tableName} NOT found. Caching will not work`)
-        }
-      }
-     // connection.end();
-    });
-  });
-
-
-const set = async (sequence, database, data) => {
-
-    try{
-        var data = [new HBaseTypes.Mutation({column:'ref:sourcedb','value':database}), new HBaseTypes.Mutation({column:'ref:data','value': JSON.stringify(data)})];
-        client.mutateRow(config.tableName, sequence, data, null, function(error, success){
-            if(error){
-                console.log(error)
+  HBaseTypes = require('./gen-nodejs/Hbase_types.js');
+ 
+let connection; 
+let client;
+const connect = () =>{
+    connection = thrift.createConnection(config.hosts[0], config.port, {
+        transport: thrift.TBufferedTransport,
+        protocol: thrift.TBinaryProtocol,
+        
+      }); 
+     client = thrift.createClient(HBase,connection);
+     connection.on('close', function(){ 
+        console.log("The connnection closed, reconnecting...")
+         connect()
+    })
+    connection.on('connect', function() {
+        client.getTableNames(function(err,data) {
+          if (err) {
+            console.log('get table names error:', err);
+          } else {
+           // console.log('hbase tables:', data.map(t => t.toString()));
+            const table = data.find(t => t.toString() === config.tableName);
+            if(table){
+                console.log(`Hbase table ${config.tableName} found. Cache is ready.`);
+                return client;
             } else {
-               // console.log("Insertion succeeded")
+                console.log(`Hbase table ${config.tableName} NOT found. Caching will not work`)
+                return null;
             }
-            
-        })
-    } catch(e) {
-        console.log(e);
-    }
+          }
+        });
+      });
+}
+
+const set = async (sequence, database, result) => {
+    return new Promise((resolve, reject) => {
+        if(client){
+            var data = [new HBaseTypes.Mutation({column:'ref:sourcedb','value':database}), new HBaseTypes.Mutation({column:'ref:data','value': JSON.stringify(result)})];
+            client.mutateRow(config.tableName, sequence, data, null, function(error, success){
+                if(error){
+                    console.log(error)
+                    reject()
+                } else {
+                    resolve()
+                   // console.log("Insertion succeeded")
+                }
+                
+            })
+        } else {
+            reject()
+        }
+    })
 }
 
 const get = async (sequence, database) => {
 
     return new Promise((resolve, reject) => {
-            client.getRow(config.tableName, sequence, null, function(error, data){
-                if(error){
-                    console.log(error)
-                    reject(error)
-                } else {
-                    // console.log("Get succeeded")
-                    let result = data.find(row => _.get(row, 'columns["ref:sourcedb"].value', '').toString() === database)
-                    if(result){
-                        resolve(JSON.parse(_.get(result, 'columns["ref:data"].value', '').toString()))
+            if(client){
+                client.getRow(config.tableName, sequence, null, function(error, data){
+                    if(error){
+                        console.log(error)
+                        reject(error)
                     } else {
-                        reject("Not found")
+                        // console.log("Get succeeded")
+                        let result = data.find(row => _.get(row, 'columns["ref:sourcedb"].value', '').toString() === database)
+                        if(result){
+                            resolve(JSON.parse(_.get(result, 'columns["ref:data"].value', '').toString()))
+                        } else {
+                            reject("Not found")
+                        }
+                       
                     }
-                   
-                }
-                
-            })
-        
+                    
+                })
+            }  else {
+                reject();
+            }
     })
     
 }
 
+connect()
 module.exports = {
     set,
     get
