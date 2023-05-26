@@ -9,7 +9,7 @@ const spawn = require('child_process').spawn;
 const config = require('./config');
 const async = require('async');
 const fs = require('fs');
-const cache = require('./caches/hbase'); // Could be null if no cache is needed
+const cache =  require('./caches/hbase'); // Could be null if no cache is needed
 // const blastColumns = ['query id', 'subject id', '% identity', 'alignment length', 'mismatches', 'gap opens', 'q. start', 'q. end', 's. start', 's. end', 'evalue', 'bit score'];
 const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send', '% query cover'];
 
@@ -149,6 +149,8 @@ let blastQueue = async.queue(function(options, callback) {
 
 http.listen(config.EXPRESS_PORT, function() {
     console.log('Express server listening on port ' + config.EXPRESS_PORT);
+    console.log('Available databases: ')
+    Object.keys(config.DATABASE_NAME).map(marker => console.log(`${marker}: ${config.DATABASE_NAME[marker]}`))
 });
 
 const sanitizeSequence = (sequence) => sequence.replace(/[^ACGTURYSWKMBDHVNacgturyswkmbdhvn]/g, '');

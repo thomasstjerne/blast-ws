@@ -10,10 +10,10 @@ let client;
 const connect = () =>{
     connection = thrift.createConnection(config.hosts[0], config.port, {
         transport: thrift.TBufferedTransport,
-        protocol: thrift.TBinaryProtocol,
-        
+        protocol: thrift.TBinaryProtocol
       }); 
      client = thrift.createClient(HBase,connection);
+
      connection.on('close', function(){ 
         console.log("The connnection closed, reconnecting...")
          connect()
@@ -26,7 +26,7 @@ const connect = () =>{
            // console.log('hbase tables:', data.map(t => t.toString()));
             const table = data.find(t => t.toString() === config.tableName);
             if(table){
-                console.log(`Hbase table ${config.tableName} found. Cache is ready.`);
+               // console.log(`Hbase table ${config.tableName} found. Cache is ready.`);
                 return client;
             } else {
                 console.log(`Hbase table ${config.tableName} NOT found. Caching will not work`)
