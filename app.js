@@ -9,7 +9,7 @@ const spawn = require('child_process').spawn;
 const config = require('./config');
 const async = require('async');
 const fs = require('fs');
-const cache =  require('./caches/hbase'); // Could be null if no cache is needed
+const cache =  null;// require('./caches/hbase'); // Could be null if no cache is needed
 // const blastColumns = ['query id', 'subject id', '% identity', 'alignment length', 'mismatches', 'gap opens', 'q. start', 'q. end', 's. start', 's. end', 'evalue', 'bit score'];
 const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send', '% query cover'];
 
@@ -169,6 +169,7 @@ function getMatchType(match, marker) {
 
 function simplyfyMatch(match, bestIdentity, marker) {
     let splitted = match['subject id'].split('|');
+    let accesion = splitted[1];
     return {
         'name': splitted[2].replace(/_/g, ' '), // white space is not allowed in fasta headers and usually replaced with _
         'identity': Number(match['% identity']),
@@ -183,7 +184,8 @@ function simplyfyMatch(match, bestIdentity, marker) {
         'sstart': match['sstart'],
         'send': match['send'],
         'qcovs': Number(match['% query cover']),
-        'distanceToBestMatch': bestIdentity - Number(match['% identity'])
+        'distanceToBestMatch': bestIdentity - Number(match['% identity']),
+        'accession': accesion || ''
     };
 }
 
@@ -250,6 +252,10 @@ function blastOptionsFromRequest(req) {
          marker = 'ITS';
      } else if (req[dataLocation].marker.substring(0, 3).toLowerCase() === '16s') {
         marker = '16S';
+    } else if (req[dataLocation].marker.substring(0, 3).toLowerCase() === '12s') {
+        marker = '12S';
+    } else if (req[dataLocation].marker.substring(0, 3).toLowerCase() === '18s') {
+        marker = '18S';
     }
     let options = {filename: filename, seq: seq, marker: marker};
     const perc_identity = _.get(req, 'body.perc_identity'); 
