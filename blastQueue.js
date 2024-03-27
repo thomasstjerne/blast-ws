@@ -3,6 +3,14 @@ const config = require('./config');
 const async = require('async');
 const fs = require('fs');
 
+/*
+This is version of the blastQueue that have been used since the seq id tool was launched. 
+It uses child_process.spawn without opening shells. 
+It needs to write the query sequence to a fasta file which is passed to blastn.
+When the query completes, the file is removed.
+The query sequence files are written to BLAST_SEQ_PATH , and the process needs to have RW access to this directory.
+*/
+
 const blastQueue = async.queue(function(options, callback) {
     fs.writeFile(config.BLAST_SEQ_PATH + options.filename, '>' + options.req_id + '\n' + options.seq, 'utf-8', function(e) {
         if (e) {
