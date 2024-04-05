@@ -50,8 +50,7 @@ app.use('/blast', function(req, res, next) {
     }
 });
 
-
-app.post('/blast', function(req, res) {
+const blastOne = (req, res) => {
     const options = blastOptionsFromRequest(req)
     try {
         blastQueue.push(options, function(err, blastCliOutput) {
@@ -80,9 +79,9 @@ app.post('/blast', function(req, res) {
     } catch (err) {
         console.log(err);
     }
-});
+}
 
-app.post('/blast/raw', function(req, res) {
+const blastOneRaw = (req, res) => {
     const options = blastOptionsFromRequest(req)
     try {
         blastQueue.push(options, function(err, blastCliOutput) {
@@ -98,15 +97,7 @@ app.post('/blast/raw', function(req, res) {
     } catch (err) {
         console.log(err);
     }
-});
-
-app.listen(config.EXPRESS_PORT, function() {
-    console.log('Express server listening on port ' + config.EXPRESS_PORT);
-    console.log('Available databases: ')
-    Object.keys(config.DATABASE_NAME).map(marker => console.log(`${marker}: ${config.DATABASE_NAME[marker]}`))
- });
-
-
+}
 
 
 function getFromCache(req, res) {
@@ -125,5 +116,16 @@ function getFromCache(req, res) {
         }
 }
 
+app.post('/blast', blastOne);
+app.get('/blast', blastOne);
+
+app.post('/blast/raw',blastOneRaw );
+app.get('/blast/raw',blastOneRaw );
 app.post('/blast/cache', getFromCache);
 app.get('/blast/cache', getFromCache);
+
+app.listen(config.EXPRESS_PORT, function() {
+    console.log('Express server listening on port ' + config.EXPRESS_PORT);
+    console.log('Available databases: ')
+    Object.keys(config.DATABASE_NAME).map(marker => console.log(`${marker}: ${config.DATABASE_NAME[marker]}`))
+ });
