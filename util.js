@@ -1,6 +1,7 @@
+const json = require('body-parser/lib/types/json');
 const config = require('./config');
 const _ = require('lodash');
-const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send', '% query cover'];
+const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send', '% query cover', 'query id'];
 
 
 const sanitizeSequence = (sequence) => sequence.replace(/[^ACGTURYSWKMBDHVNacgturyswkmbdhvn]/g, '');
@@ -74,7 +75,7 @@ const getMatch = (matches, marker, verbose) => {
 
 const blastResultToJson = (blastResult) => {
     if (blastResult) {
-        let matches = blastResult.split('\n');
+        let matches = blastResult.split('\n').filter(m => !!m);
         let json = matches.map(function(m) {
             let splitted = m.split('\t');
             let res = {};
@@ -94,7 +95,7 @@ const blastResultToJson = (blastResult) => {
 const blastOptionsFromRequest = (req) => {
     let dataLocation = (req.body.sequence && req.body.marker) ? 'body' : 'query';
     let filename = req.id + '.fasta';
-    let seq = sanitizeSequence(req[dataLocation].sequence);
+    let seq = _.isArray(req[dataLocation].sequence) ? req[dataLocation].sequence.map(sanitizeSequence) : sanitizeSequence(req[dataLocation].sequence);
     let marker;
      if (req[dataLocation].marker.substring(0, 3).toLowerCase() === 'coi' || req[dataLocation].marker.substring(0, 3).toLowerCase() === 'co1') {
          marker = 'COI';
@@ -108,8 +109,8 @@ const blastOptionsFromRequest = (req) => {
         marker = '18S';
     }
     let options = {id : req.id, filename: filename, seq: seq, marker: marker};
-    const perc_identity = _.get(req, 'body.perc_identity'); 
-    const max_target_seqs = _.get(req, 'body.max_target_seqs'); 
+    const perc_identity = _.get(req[dataLocation], 'perc_identity'); 
+    const max_target_seqs = _.get(req[dataLocation], 'body.max_target_seqs'); 
     if(perc_identity&& !isNaN(parseInt(perc_identity))){
         options.perc_identity = perc_identity
     }
@@ -119,10 +120,20 @@ const blastOptionsFromRequest = (req) => {
     return options;
 }
 
+const getFastaFromRequest = (seq, resultArray) => {
+    const data = typeof seq === 'string' ? [seq] : seq;
+
+    return data.map((s, idx) => {
+        // do not blast sequences that was already fetched from cache
+        return !_.get(resultArray, `[${idx}]`) ? `>${idx}\n${s}` : '';
+    }).join('\n')
+}
+
 module.exports = {
     sanitizeSequence,
     simplyfyMatch,
     getMatch,
     blastResultToJson,
-    blastOptionsFromRequest
+    blastOptionsFromRequest,
+    getFastaFromRequest
 }

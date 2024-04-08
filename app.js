@@ -3,6 +3,7 @@ const _ = require('lodash');
 const express = require('express');
 const app = express();
 const addRequestId = require('express-request-id')();
+const pLimit = require('p-limit')
 const bodyParser = require('body-parser');
 const {
     sanitizeSequence,
@@ -15,10 +16,11 @@ const {
 const config = require('./config');
 // const async = require('async');
 // const fs = require('fs');
-const cache =  null;// require('./caches/hbase'); // Could be null if no cache is needed
+const cache = null; // require('./caches/hbase'); // Could be null if no cache is needed
 // const blastColumns = ['query id', 'subject id', '% identity', 'alignment length', 'mismatches', 'gap opens', 'q. start', 'q. end', 's. start', 's. end', 'evalue', 'bit score'];
 const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send', '% query cover'];
 const blastQueue = require('./blastQueue')
+const limit = pLimit(config.CACHE_CONCURRENCY);
 
 app.use(addRequestId);
 app.use(bodyParser.json({
@@ -34,7 +36,7 @@ app.use('/blast', function(req, res, next) {
         res.status(422).send({'error': 'Unsupported marker'});
     } else if (!sequence) {
         res.status(422).send({'error': 'No sequence given'});
-    } else if(cache){
+    } else if(cache && !_.isArray(sequence)){
         const options = blastOptionsFromRequest(req);
         cache.get(options.seq, config.DATABASE_NAME[options.marker] )
                         .then(
@@ -99,6 +101,86 @@ const blastOneRaw = (req, res) => {
     }
 }
 
+const getCachedResults = async ({seq, resultArray, marker}) => {
+    try {
+
+    const input = seq.map((e, idx) =>  limit(
+       () =>  cache.get(seq[idx], config.DATABASE_NAME[marker], true )
+        .then(
+            (result)=> {
+              // console.log("Cache hit")
+               resultArray[idx] = result
+            })
+        .catch(() => {
+           // console.log("Not cached")
+        })
+     ) )
+    
+    await Promise.allSettled(input)
+    return resultArray;
+    } catch (error) {
+        console.log(error)
+    }
+    
+}
+
+const blastMany = async (req, res) => {
+    const options = blastOptionsFromRequest(req)
+    if(!_.isArray(options.seq)){
+        return res.status(400)
+    };
+    const resultArray = Array(options.seq.length);
+
+    options.resultArray = resultArray;
+
+    if(cache){
+        try {
+            await getCachedResults(options)
+        } catch (error) {
+            console.log(error)
+        }
+        
+    }
+    // get array of indices where uncached data are
+    const unCached = options.seq.map((e, i) => {
+        return !!resultArray[i] ?  -1: i
+    }).filter(e => e > -1)
+
+    try {
+        blastQueue.push(options, function(err, blastCliOutput) {
+            if (err) {
+                console.log(err);
+                res.status(500).send(err);
+            } else {
+               // console.log(blastCliOutput)
+                let blastJson = blastResultToJson(blastCliOutput);
+                const grouped = _.groupBy(blastJson, "query id")
+                Object.keys(grouped).forEach(idx => {
+                    const match = getMatch(grouped[idx], options.marker, req.query.verbose)
+                    resultArray[Number(idx)] = match;
+                     
+
+                 }) 
+                 if(cache && unCached.length > 0){
+                    const promises = unCached.map((i) => limit(() => cache.set(options.seq[i], config.DATABASE_NAME[options.marker] , resultArray[i])
+                    /*  .then(()=> {
+                        console.log(`Inserted ${options.seq[i]} to cache successfully` )
+                    }) */ 
+                    .catch((err) => {
+                        console.log("Caching err :")
+                        console.log(err)
+                    })))
+
+                 } 
+                 res.status(200).send(resultArray)
+                
+            }
+        });
+    } catch (err) {
+        console.log(err);
+    }
+}
+
 
 function getFromCache(req, res) {
     const options = blastOptionsFromRequest(req)
@@ -118,6 +200,9 @@ function getFromCache(req, res) {
 
 app.post('/blast', blastOne);
 app.get('/blast', blastOne);
+
+app.post('/blast/batch', blastMany);
+
 
 app.post('/blast/raw',blastOneRaw );
 app.get('/blast/raw',blastOneRaw );

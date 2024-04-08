@@ -57,24 +57,30 @@ const set = async (sequence, database, result) => {
     })
 }
 
-const get = async (sequence, database) => {
-
+const get = async (sequence, database, parse = false) => {
     return new Promise((resolve, reject) => {
             if(client){
                 client.getRow(config.tableName, sequence, null, function(error, data){
-                    if(error){
-                        console.log(error)
-                        reject(error)
-                    } else {
-                        // console.log("Get succeeded")
-                        let result = data.find(row => _.get(row, 'columns["ref:sourcedb"].value', '').toString() === database)
-                        if(result){
-                            resolve(JSON.parse(_.get(result, 'columns["ref:data"].value', '').toString()))
+                    try {
+                        if(error){
+                            console.log(error)
+                            reject(error)
                         } else {
-                            reject("Not found")
-                        }
-                       
+                            // console.log("Get succeeded")
+                            let result = data.find(row => _.get(row, 'columns["ref:sourcedb"].value', '').toString() === database)
+                            //console.log(result)
+                            if(result){
+                                const res = JSON.parse(_.get(result, 'columns["ref:data"].value', ''));
+                                resolve(parse ? res : res.toString())
+                            } else {
+                                reject("Not found")
+                            }
+                           
+                        }  
+                    } catch (error) {
+                        console.log(error)
                     }
+                    
                     
                 })
             }  else {
