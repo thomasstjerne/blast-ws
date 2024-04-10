@@ -155,12 +155,13 @@ const blastMany = async (req, res) => {
                // console.log(blastCliOutput)
                 let blastJson = blastResultToJson(blastCliOutput);
                 const grouped = _.groupBy(blastJson, "query id")
-                Object.keys(grouped).forEach(idx => {
-                    const match = getMatch(grouped[idx], options.marker, req.query.verbose)
-                    resultArray[Number(idx)] = match;
-                     
 
-                 }) 
+                for(let idx = 0; idx < options.seq.length; idx++){
+                    const match = !!grouped[idx] ? getMatch(grouped[idx], options.marker, req.query.verbose) : {matchType: 'BLAST_NO_MATCH'}
+                    resultArray[idx] = match
+
+                }
+                
                  if(cache && unCached.length > 0){
                     const promises = unCached.map((i) => limit(() => cache.set(options.seq[i], config.DATABASE_NAME[options.marker] , resultArray[i])
                     /*  .then(()=> {

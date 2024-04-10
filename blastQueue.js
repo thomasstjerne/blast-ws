@@ -46,11 +46,11 @@ const blastQueue = async.queue(function(options, callback) {
                 });
 
                 pcs.stdout.on('end', function() {
-                    /* fs.unlink(config.BLAST_SEQ_PATH + options.filename, function(e1) {
+                     fs.unlink(config.BLAST_SEQ_PATH + options.filename, function(e1) {
                         if (e1) {
                             console.log('Failed to remove seq file: ' + options.filename);
                         }
-                    }); */
+                    }); 
                     callback(null, string);
                     pcs.stdout.destroy();
                 });
