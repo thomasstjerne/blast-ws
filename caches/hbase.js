@@ -57,7 +57,7 @@ const set = async (sequence, database, result) => {
     })
 }
 
-const get = async (sequence, database, parse = false) => {
+const get = async (sequence, database) => {
     return new Promise((resolve, reject) => {
             if(client){
                 client.getRow(config.tableName, sequence, null, function(error, data){
@@ -71,7 +71,7 @@ const get = async (sequence, database, parse = false) => {
                             //console.log(result)
                             if(result){
                                 const res = JSON.parse(_.get(result, 'columns["ref:data"].value', ''));
-                                resolve(parse ? res : res.toString())
+                                resolve(res) // resolve(parse ? res : res.toString())
                             } else {
                                 reject("Not found")
                             }

@@ -125,9 +125,16 @@ const getFastaFromRequest = (seq, resultArray) => {
 
     return data.map((s, idx) => {
         // do not blast sequences that was already fetched from cache
-        return !_.get(resultArray, `[${idx}]`) ? `>${idx}\n${s}` : '';
-    }).join('\n')
+        return   !_.get(resultArray, `[${idx}]`) ? `>${idx}\n${s}` : '';
+    }).filter(s => !!s).join('\n')
 }
+
+const averageSeqLength = array => array.reduce((a, b) => a + b.length, 0) / array.length;
+
+const chunkArray = (arr, size) =>
+  Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+    arr.slice(i * size, i * size + size)
+  );
 
 module.exports = {
     sanitizeSequence,
@@ -135,5 +142,7 @@ module.exports = {
     getMatch,
     blastResultToJson,
     blastOptionsFromRequest,
-    getFastaFromRequest
+    getFastaFromRequest,
+    averageSeqLength,
+    chunkArray
 }
