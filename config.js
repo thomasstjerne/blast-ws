@@ -17,18 +17,20 @@ const LIMIT_MAX_TARGET_SEQS = 100;
 const MINIMUM_QUERY_COVER =  50;// 80; // Minimum percentage of subject that is included in alignment
 const NUM_THREADS = 1; // NUM_THREADS * NUM_CONCURRENT_PROCESSES should be equal to the number of cores available for this service
 const NUM_CONCURRENT_PROCESSES = 8;
-const CACHE_CONCURRENCY  = 1;
+const CACHE_CONCURRENCY  = 50;
 
 const env = process.env.NODE_ENV || 'local';
 console.log('ENV: ' + env);
 
 
 const HBASE = {
-  hosts: ["c4master1-vh.gbif.org", "c4master2-vh.gbif.org", "c4master2-vh.gbif.org"],
-  port: 9090,
+  hosts: ['uc6n10.gbif.org'], //["c4master1-vh.gbif.org", "c4master2-vh.gbif.org", "c3master3-vh.gbif.org"],
+  port: 31995,
   tableName: 'blast_cache'
   
 }; 
+
+
 
 const config = {
   local: {
