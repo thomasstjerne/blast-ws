@@ -18,7 +18,7 @@ const {
 const config = require('./config');
 // const async = require('async');
 // const fs = require('fs');
-const cache =  null// require('./caches/hbase'); // Could be null if no cache is needed
+const cache = require('./caches/hbase'); // Could be null if no cache is needed
 // const blastColumns = ['query id', 'subject id', '% identity', 'alignment length', 'mismatches', 'gap opens', 'q. start', 'q. end', 's. start', 's. end', 'evalue', 'bit score'];
 const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send', '% query cover'];
 const blastQueue = require('./blastQueue')
