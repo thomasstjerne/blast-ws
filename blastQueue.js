@@ -24,11 +24,14 @@ const blastQueue = async.queue(function(options, callback) {
           '-max_target_seqs', !isNaN(parseInt(options.max_target_seqs)) && parseInt(options.max_target_seqs) <= config.LIMIT_MAX_TARGET_SEQS ? options.max_target_seqs : config.MAX_TARGET_SEQS,
           '-num_threads', config.NUM_THREADS,
           '-qcov_hsp_perc', config.MINIMUM_QUERY_COVER,
-          '-max_hsps', 1
-      ];
+          '-max_hsps', 1,
+/*             '-task', 'megablast'
+ */      ];
       if(options.perc_identity){
           params = [...params, '-perc_identity', options.perc_identity]
       }
+
+     // console.log('blastn ' + params.join(' '));
           let pcs = spawn('blastn',
                 params,
                 {stdio: [0, 'pipe', 0]});

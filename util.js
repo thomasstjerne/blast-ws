@@ -4,7 +4,10 @@ const _ = require('lodash');
 const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send', '% query cover', 'query id'];
 
 
-const sanitizeSequence = (sequence) => sequence.replace(/[^ACGTURYSWKMBDHVNacgturyswkmbdhvn]/g, '');
+const sanitizeSequence = (sequence) => {
+    const sanitized = sequence.replace(/[^ACGTURYSWKMBDHVNacgturyswkmbdhvn]/g, '');
+    return sanitized
+}
 
 const getMatchType = (match, marker) => {
     if (!match) {
@@ -43,7 +46,7 @@ const simplyfyMatch = (match, bestIdentity, marker) => {
 const getMatch = (matches, marker, verbose) => {
     try {
         let best = _.maxBy(matches, function(o) {
-           return Number(o['bit score']);
+           return Number(o['% identity']);
         });
         let otherMatches = _.reduce(matches, function(alternatives, match) {
             if (match !== best && match['subject id']) {
