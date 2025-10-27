@@ -1,6 +1,6 @@
 const BLAST_SEQ_PATH = '/Users/vgs417/blast/seq/';
 const BLAST_DATABASE_PATH = '/Users/vgs417/blast/db/';
-const DATABASE_NAME_COI = 'bold_COI5P_99_consensus_2024_07_19.fasta' // 'bold_COI5P_99_consensus_2024_01_06.fasta'; //'bold_COI5P_99_consensus_2023_03_12.fasta'; // 'bold_COI5P_99_consensus_2022_02_22.fasta'; // 'bold_COI5P_99_consensus_2021_03_18.fasta'; //'bold_COI5P_99_consensus.fasta';
+const DATABASE_NAME_COI = 'bold_COI5P_99_consensus_2025_10_17.fasta' // 'bold_COI5P_99_consensus_2024_07_19.fasta' 'bold_COI5P_99_consensus_2024_01_06.fasta'; 
 const DATABASE_NAME_ITS =  'sh_general_release_dynamic_s_all_25.07.2023.fasta'; // 'sh_general_release_dynamic_s_all_29.11.2022.fasta'; //'sh_general_release_dynamic_s_04.02.2020.fasta';
 const DATABASE_NAME_16S =  'gtdb_ssu_reps_r214.fasta'; // 'gtdb_ssu_reps_r207.fasta'; //'gtdb_ssu_reps_r202.fasta'; // 'gtdb_ssu_reps_r95.fasta';
 const DATABASE_NAME_12S = 'mitofish.12S.Dec2023.fasta'; //'mitofish.12S.May2023.fasta'
