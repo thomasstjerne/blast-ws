@@ -36,7 +36,7 @@ app.use('/blast', function(req, res, next) {
     let sequence = _.get(req, 'body.sequence') ||  _.get(req, 'query.sequence');
     if (!marker) {
         res.status(422).send({'error': 'No marker given'});
-    } else if (config.SUPPORTED_MARKERS.indexOf(marker.substring(0, 3).toLowerCase()) === -1) {
+    } else if (config.SUPPORTED_MARKERS.indexOf(marker.substring(0, 4).toLowerCase()) === -1) {
         res.status(422).send({'error': 'Unsupported marker'});
     } else if (!sequence) {
         res.status(422).send({'error': 'No sequence given'});
@@ -57,7 +57,7 @@ app.use('/blast', function(req, res, next) {
 });
 
 const blastOne = async (req, res) => {
-    if(queue.size > 8 * config.NUM_CONCURRENT_PROCESSES){
+    if(queue.size > 4 * config.NUM_CONCURRENT_PROCESSES){
         return res.status(503).send({error: 'Server busy, please try again later'});
     }
     const options = blastOptionsFromRequest(req)
@@ -111,7 +111,7 @@ const blastOne = async (req, res) => {
 }
 
 const blastOneRaw = async (req, res) => {
-    if(queue.size > 8 * config.NUM_CONCURRENT_PROCESSES){
+    if(queue.size > 4 * config.NUM_CONCURRENT_PROCESSES){
         return res.status(503).send({error: 'Server busy, please try again later'});
     }
     const options = blastOptionsFromRequest(req)
@@ -232,6 +232,10 @@ const blastChunk = async (options, verbose) => {
     }
 
 const blastMany = async (req, res) => {
+
+    if(queue.size > 4 * config.NUM_CONCURRENT_PROCESSES){
+        return res.status(503).send({error: 'Server busy, please try again later'});
+    }
     const options = blastOptionsFromRequest(req)
     if(!_.isArray(options.seq)){
         return res.status(400)
@@ -254,8 +258,9 @@ const blastMany = async (req, res) => {
     } */
 
     try {
+        
          
-        const avgLength = averageSeqLength(options.seq);
+         const avgLength = averageSeqLength(options.seq);
         if(options?.marker === 'COI' && avgLength > 399){
             const chunks = chunkArray(options.seq, 5)
             const promises = chunks.map((chunk, idx) => blastChunk({...options, seq: chunk, filename: `${idx}_${options.filename}`, signal}, req.query.verbose))
@@ -267,7 +272,7 @@ const blastMany = async (req, res) => {
             // console.log(`Don´t chunk`)
             const result = await blastChunk(options, req.query.verobose)
             res.status(200).send(result)
-        }
+        } 
         
     } catch (err) {
         console.log(err);

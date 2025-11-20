@@ -37,7 +37,8 @@ const runBlast = (options) => new Promise((resolve, reject) => {
           params = [...params, '-perc_identity', options.perc_identity]
       }
 
-     // console.log('blastn ' + params.join(' '));
+      // console.log('blastn ' + params.join(' '));
+     // console.log('Running blast for: ' + options.marker);
           let pcs = spawn('blastn',
                 params,
                 {stdio: [0, 'pipe', 0]});
