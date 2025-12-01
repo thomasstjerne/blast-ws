@@ -4,6 +4,7 @@ const express = require('express');
 const app = express();
 const addRequestId = require('express-request-id')();
 const pLimit = require('p-limit')
+const pQueue = require('p-queue').default;
 const bodyParser = require('body-parser');
 const {
     averageSeqLength,
@@ -18,11 +19,12 @@ const {
 const config = require('./config');
 // const async = require('async');
 // const fs = require('fs');
-const cache =  null//require('./caches/hbase'); // Could be null if no cache is needed
+const cache =  null// require('./caches/hbase'); // Could be null if no cache is needed
 // const blastColumns = ['query id', 'subject id', '% identity', 'alignment length', 'mismatches', 'gap opens', 'q. start', 'q. end', 's. start', 's. end', 'evalue', 'bit score'];
 const blastColumns = ['subject id', '% identity', 'alignment length', 'evalue', 'bit score', 'query sequence', 'subject sequence', 'qstart', 'qend', 'sstart', 'send', '% query cover'];
-const blastQueue = require('./blastQueue')
+const runBlast = require('./blast')
 const limit = pLimit(config.CACHE_CONCURRENCY);
+const queue = new pQueue({ concurrency: config.NUM_CONCURRENT_PROCESSES });
 
 app.use(addRequestId);
 app.use(bodyParser.json({
@@ -34,7 +36,7 @@ app.use('/blast', function(req, res, next) {
     let sequence = _.get(req, 'body.sequence') ||  _.get(req, 'query.sequence');
     if (!marker) {
         res.status(422).send({'error': 'No marker given'});
-    } else if (config.SUPPORTED_MARKERS.indexOf(marker.substring(0, 3).toLowerCase()) === -1) {
+    } else if (config.SUPPORTED_MARKERS.indexOf(marker.substring(0, 4).toLowerCase()) === -1) {
         res.status(422).send({'error': 'Unsupported marker'});
     } else if (!sequence) {
         res.status(422).send({'error': 'No sequence given'});
@@ -54,10 +56,32 @@ app.use('/blast', function(req, res, next) {
     }
 });
 
-const blastOne = (req, res) => {
+const blastOne = async (req, res) => {
+    if(queue.size > 4 * config.NUM_CONCURRENT_PROCESSES){
+        return res.status(503).send({error: 'Server busy, please try again later'});
+    }
     const options = blastOptionsFromRequest(req)
+
     try {
-        blastQueue.push(options, function(err, blastCliOutput) {
+
+        const blastCliOutput = await queue.add(() => runBlast(options));
+        let blastJson = blastResultToJson(blastCliOutput);
+                let match = (blastJson.matchType !== 'BLAST_NO_MATCH') ? getMatch(blastJson, options.marker, req.query.verbose) : blastJson;
+                match.sequenceLength = (options.seq) ? options.seq.length : 0;
+                 // Only cache default results with max target seqs === config.MAX_TARGET_SEQS
+                if(!cache || (options.max_target_seqs && options.max_target_seqs !== config.MAX_TARGET_SEQS)){
+                    res.status(200).json(match);
+                } else {
+                        cache.set(options.seq, config.DATABASE_NAME[options.marker] , match)
+                        .then(()=> {res.status(200).json(match);})
+                        .catch((err) => {
+                            console.log("Caching err :")
+                            console.log(err)
+                            res.status(200).json(match);
+                        })       
+                }
+
+  /*       blastQueue.push(options, function(err, blastCliOutput) {
             if (err) {
                 console.log(err);
                 res.status(500).send(err);
@@ -79,16 +103,25 @@ const blastOne = (req, res) => {
                 }
                 
             }
-        });
+        }); */
     } catch (err) {
         console.log(err);
+        res.status(500).send(err);
     }
 }
 
-const blastOneRaw = (req, res) => {
+const blastOneRaw = async (req, res) => {
+    if(queue.size > 4 * config.NUM_CONCURRENT_PROCESSES){
+        return res.status(503).send({error: 'Server busy, please try again later'});
+    }
     const options = blastOptionsFromRequest(req)
     try {
-        blastQueue.push(options, function(err, blastCliOutput) {
+        const blastCliOutput = await queue.add(() => runBlast(options));
+         let match = blastResultToJson(blastCliOutput);
+                match.sequenceLength = options.seq ? options.seq.length : 0;
+                res.status(200).json(match);
+
+       /*  blastQueue.push(options, function(err, blastCliOutput) {
             if (err) {
                 console.log(err);
                 res.status(500).send(err);
@@ -97,9 +130,10 @@ const blastOneRaw = (req, res) => {
                 match.sequenceLength = options.seq ? options.seq.length : 0;
                 res.status(200).json(match);
             }
-        });
+        }); */
     } catch (err) {
         console.log(err);
+        res.status(500).send(err);
     }
 }
 
@@ -149,17 +183,15 @@ const blastChunk = async (options, verbose) => {
 
 
 
-    return new Promise((resolve, reject) =>{
+  
 
         try {
             if(cache && unCached.length === 0){
-                resolve(resultArray)
+                return resultArray
             } else {
-                blastQueue.push(options, function(err, blastCliOutput) {
-                    if (err) {
-                        console.log(err);
-                        reject(err);
-                    } else {
+                // console.log(`Queue size: ${queue.size}  Pending: ${queue.pending}`)
+                const blastCliOutput = await queue.add(() => runBlast(options));
+                    
                        // console.log(blastCliOutput)
                         let blastJson = blastResultToJson(blastCliOutput);
                         const grouped = _.groupBy(blastJson, "query id")
@@ -186,20 +218,24 @@ const blastChunk = async (options, verbose) => {
                             })))
         
                          } 
-                         resolve(resultArray)
+                         return resultArray
                         
-                    }
-                });
+                    
+                
             }
             
         } catch (err) {
             console.log(err);
-            reject(err)
+            throw err;
         }
 
-    })
-}
+    }
+
 const blastMany = async (req, res) => {
+
+    if(queue.size > 4 * config.NUM_CONCURRENT_PROCESSES){
+        return res.status(503).send({error: 'Server busy, please try again later'});
+    }
     const options = blastOptionsFromRequest(req)
     if(!_.isArray(options.seq)){
         return res.status(400)
@@ -210,12 +246,24 @@ const blastMany = async (req, res) => {
       return res.status(413)
     } 
 
+    const controller = new AbortController();
+    const signal = controller.signal; 
+
+    res.on('close', () => {
+        //console.log(`Request aborted by the client: ${req.id}`);
+        controller.abort();
+    });
+   /*  if(queue.size > 8 * config.NUM_CONCURRENT_PROCESSES){
+        return res.status(503).send({error: 'Server busy, please try again later'});
+    } */
 
     try {
-        const avgLength = averageSeqLength(options.seq);
+        
+         
+         const avgLength = averageSeqLength(options.seq);
         if(options?.marker === 'COI' && avgLength > 399){
             const chunks = chunkArray(options.seq, 5)
-            const promises = chunks.map((chunk, idx) => blastChunk({...options, seq: chunk, filename: `${idx}_${options.filename}`}, req.query.verbose))
+            const promises = chunks.map((chunk, idx) => blastChunk({...options, seq: chunk, filename: `${idx}_${options.filename}`, signal}, req.query.verbose))
             const results = await Promise.all(promises)
             const result = results.reduce((a, b) => [...a, ...b])
            // console.log(`Use chunks of 5`)
@@ -224,7 +272,7 @@ const blastMany = async (req, res) => {
             // console.log(`Don´t chunk`)
             const result = await blastChunk(options, req.query.verobose)
             res.status(200).send(result)
-        }
+        } 
         
     } catch (err) {
         console.log(err);
@@ -261,6 +309,9 @@ app.post('/blast/raw',blastOneRaw );
 app.get('/blast/raw',blastOneRaw );
 app.post('/blast/cache', getFromCache);
 app.get('/blast/cache', getFromCache);
+app.get('/queue-size', (req, res) => {
+    res.status(200).send( {size: queue.size, pending: queue.pending} )
+})
 
 app.listen(config.EXPRESS_PORT, function() {
     console.log('Express server listening on port ' + config.EXPRESS_PORT);

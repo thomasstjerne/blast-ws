@@ -110,6 +110,8 @@ const blastOptionsFromRequest = (req) => {
         marker = '12S';
     } else if (req[dataLocation].marker.substring(0, 3).toLowerCase() === '18s') {
         marker = '18S';
+    } else if (req[dataLocation].marker.substring(0, 4).toLowerCase() === 'rbcl') {
+        marker = 'RBCL';
     }
     let options = {id : req.id, filename: filename, seq: seq, marker: marker};
     const perc_identity = _.get(req[dataLocation], 'perc_identity'); 
