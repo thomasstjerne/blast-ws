@@ -12,9 +12,9 @@ const sanitizeSequence = (sequence) => {
 const getMatchType = (match, marker) => {
     if (!match) {
         return 'BLAST_NO_MATCH';
-    } else if (Number(match['% identity']) > config.MATCH_THRESHOLD[marker] /* && Number(match['% query cover']) >= config.MINIMUM_QUERY_COVER */) {
+    } else if (Number(match['% identity']) > config.MATCH_THRESHOLD /* && Number(match['% query cover']) >= config.MINIMUM_QUERY_COVER */) {
         return 'BLAST_EXACT_MATCH';
-    } else if (Number(match['% identity']) > config.MATCH_CLOSE_THRESHOLD[marker] /* && Number(match['% query cover']) >= config.MINIMUM_QUERY_COVER */) {
+    } else if (Number(match['% identity']) > config.MATCH_CLOSE_THRESHOLD /* && Number(match['% query cover']) >= config.MINIMUM_QUERY_COVER */) {
         return 'BLAST_CLOSE_MATCH';
     } else {
         return 'BLAST_WEAK_MATCH';
@@ -100,18 +100,21 @@ const blastOptionsFromRequest = (req) => {
     let filename = req.id + '.fasta';
     let seq = _.isArray(req[dataLocation].sequence) ? req[dataLocation].sequence.map(sanitizeSequence) : sanitizeSequence(req[dataLocation].sequence);
     let marker;
-     if (req[dataLocation].marker.substring(0, 3).toLowerCase() === 'coi' || req[dataLocation].marker.substring(0, 3).toLowerCase() === 'co1') {
-         marker = 'COI';
+    if( config.SUPPORTED_MARKERS.includes(req[dataLocation].marker?.toLowerCase()) ){
+        marker = req[dataLocation].marker.toLowerCase();
+    }
+     else if (req[dataLocation].marker.substring(0, 3).toLowerCase() === 'coi' || req[dataLocation].marker.substring(0, 3).toLowerCase() === 'co1') {
+         marker = 'coi';
      } else if (req[dataLocation].marker.substring(0, 3).toLowerCase() === 'its') {
-         marker = 'ITS';
+         marker = 'its';
      } else if (req[dataLocation].marker.substring(0, 3).toLowerCase() === '16s') {
-        marker = '16S';
+        marker = '16s';
     } else if (req[dataLocation].marker.substring(0, 3).toLowerCase() === '12s') {
-        marker = '12S';
+        marker = '12s';
     } else if (req[dataLocation].marker.substring(0, 3).toLowerCase() === '18s') {
-        marker = '18S';
+        marker = '18s';
     } else if (req[dataLocation].marker.substring(0, 4).toLowerCase() === 'rbcl') {
-        marker = 'RBCL';
+        marker = 'rbcl';
     }
     let options = {id : req.id, filename: filename, seq: seq, marker: marker};
     const perc_identity = _.get(req[dataLocation], 'perc_identity'); 

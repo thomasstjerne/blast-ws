@@ -18,7 +18,10 @@ const runBlast = (options) => new Promise((resolve, reject) => {
         signal.addEventListener('abort', () => {
             reject(new Error(`${options.id} was aborted`));
         });
-    }
+    } 
+    //console.log('Running blast for: ' + options.marker);
+    //console.log('Using databases: ' + JSON.stringify(config.DATABASE_NAME));
+
  fs.writeFile(config.BLAST_SEQ_PATH + options.filename, getFastaFromRequest(options.seq, options.resultArray), 'utf-8', function(e) {
         if (e) {
             reject(e);

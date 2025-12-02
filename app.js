@@ -36,7 +36,7 @@ app.use('/blast', function(req, res, next) {
     let sequence = _.get(req, 'body.sequence') ||  _.get(req, 'query.sequence');
     if (!marker) {
         res.status(422).send({'error': 'No marker given'});
-    } else if (config.SUPPORTED_MARKERS.indexOf(marker.substring(0, 4).toLowerCase()) === -1) {
+    } else if (!config.DATABASE_NAME[marker.toLowerCase()] && !config.SUPPORTED_MARKERS.includes(marker.substring(0, 4).toLowerCase())) {
         res.status(422).send({'error': 'Unsupported marker'});
     } else if (!sequence) {
         res.status(422).send({'error': 'No sequence given'});
@@ -261,7 +261,7 @@ const blastMany = async (req, res) => {
         
          
          const avgLength = averageSeqLength(options.seq);
-        if(options?.marker === 'COI' && avgLength > 399){
+        if(options?.marker === 'coi' && avgLength > 399){
             const chunks = chunkArray(options.seq, 5)
             const promises = chunks.map((chunk, idx) => blastChunk({...options, seq: chunk, filename: `${idx}_${options.filename}`, signal}, req.query.verbose))
             const results = await Promise.all(promises)
