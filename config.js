@@ -36,7 +36,13 @@ const DEFAULT_DATABASES = {'its': DATABASE_NAME_ITS, 'coi': DATABASE_NAME_COI, '
 const DATABASES = {...DEFAULT_DATABASES, 
   '12s_mt12s_eukaryotes_midori2': 'mt12S_Eukaryotes_MIDORI2_UNIQ_NUC_SP_GB268_srRNA_BLAST_SeqID.fasta',
   '16s_mt16s_eukaryotes_midori2': 'mt16S_Eukaryotes_MIDORI2_UNIQ_NUC_SP_GB268_lrRNA_BLAST_SeqID.fasta',
-  'cytb_eukaryotes_midori2': 'Cytb_Eukaryotes_MIDORI2_UNIQ_NUC_SP_GB268_Cytb_BLAST_SeqID.fasta'};
+  'cytb_eukaryotes_midori2': 'Cytb_Eukaryotes_MIDORI2_UNIQ_NUC_SP_GB268_Cytb_BLAST_SeqID.fasta',
+  '12s_nbdl': '12S_NBDL-MT-RNR1-e85f7a93142c5cf3_SeqID.fasta',
+  '16s_nbdl': '16S_NBDL-MT-RNR2-cf376e15b7a71a3f_SeqID.fasta',
+  'coi_nbdl': 'COI_NBDL-MT-CO1-f7e72089516344ba_SeqID.fasta',
+  'cytb_nbdl': 'CYTB_NBDL-MT-CYB-f85bbc9846fbe32d_SeqID.fasta'
+
+};
 const config = {
   local: {
     BLAST_SEQ_PATH: BLAST_SEQ_PATH,
